@@ -20,7 +20,6 @@ module DSpace
     end
 
     def metadata_fields(item_id)
-
       metadata_fields = []
 
       @pg.exec( "SELECT mdfield.element,mdfield.qualifier,mdvalue.text_value FROM metadatavalue AS mdvalue INNER JOIN metadatafieldregistry AS mdfield ON mdfield.metadata_field_id=mdvalue.metadata_field_id WHERE mdvalue.item_id=$1", [item_id] ) do |result|
@@ -65,8 +64,6 @@ module DSpace
     def bitstreams(item_id)
 
       bitstreams = []
-      
-      # @pg.exec( "SELECT bitstream.*,format.* FROM item2bundle AS i2b INNER JOIN bundle ON bundle.bundle_id=i2b.bundle_id LEFT JOIN bundle2bitstream AS b2b ON b2b.bundle_id=bundle.bundle_id INNER JOIN bitstream ON bitstream.bitstream_id=b2b.bitstream_id WHERE i2b.item_id=$1"
       @pg.exec( "SELECT bitstream.*,format.mimetype,format.short_description,format.description FROM item2bundle AS i2b INNER JOIN bundle ON bundle.bundle_id=i2b.bundle_id LEFT JOIN bundle2bitstream AS b2b ON b2b.bundle_id=bundle.bundle_id INNER JOIN bitstream ON bitstream.bitstream_id=b2b.bitstream_id INNER JOIN bitstreamformatregistry as format on bitstream.bitstream_format_id=format.bitstream_format_id WHERE i2b.item_id=$1", [item_id] ) do |result|
 
         result.each do |row|
@@ -137,12 +134,12 @@ module DSpace
 
       items = []
 
-      if not community_name.nil? and not collection_name.nil?
-
+      if !community_name.nil?
         pg_query = "SELECT item_id, submitter_id, in_archive, withdrawn, last_modified, owning_collection FROM collection AS coll LEFT JOIN community2collection AS c2c ON c2c.collection_id=coll.collection_id LEFT JOIN community2community AS comm2comm ON comm2comm.child_comm_id=c2c.community_id INNER JOIN community as comm ON comm.community_id=comm2comm.parent_comm_id LEFT JOIN item AS i ON i.owning_collection=coll.collection_id WHERE comm.name = '#{community_name}' AND item_id IS NOT NULL"
-      else
-
+      elsif !collection_name.nil?
         pg_query = "SELECT item_id, submitter_id, in_archive, withdrawn, last_modified, owning_collection FROM item AS i INNER JOIN collection AS c ON c.collection_id=i.owning_collection WHERE c.name = '#{collection_name}' AND item_id IS NOT NULL"
+      else
+        raise NotImplementedError.new('Retrieving all Items is not currently supported')
       end
 
       @pg.exec( pg_query ) do |result|
@@ -169,11 +166,7 @@ module DSpace
                            organization: organization
                          )
 
-          if not community_name.nil? and not collection_name.nil?
-            items << item if item_collection.communities.include? community_name
-          else
-            items << item
-          end
+          items << item
         end
       end
 
@@ -215,19 +208,13 @@ module DSpace
     def communities(collection_id, division: 'Institutional Division')
       communities = []
 
-      # community2collection
       @pg.exec( "SELECT comm.community_id, comm.name FROM community2collection AS c2c INNER JOIN community AS comm ON comm.community_id=c2c.community_id WHERE c2c.collection_id=$1", [collection_id] ) do |result|
-        
         result.each do |row|
-
           # This captures the parent name of the community
           communities << row['name']
 
-          # community2community
           @pg.exec( "SELECT comm.name FROM community2community AS c2c INNER JOIN community AS comm ON comm.community_id=c2c.parent_comm_id WHERE c2c.child_comm_id=$1", [ row['community_id'] ] ) do |c2c_result|
-
             c2c_result.each do |c2c_row|
-
               communities << c2c_row['name']
             end
           end
