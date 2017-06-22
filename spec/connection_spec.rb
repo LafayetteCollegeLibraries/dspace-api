@@ -173,20 +173,28 @@ describe DSpace::Connection do
 
     subject { described_class.new }
     context 'when retrieving items within a collection' do
-      let(:items) { subject.items(collection: 'My Collection') }
+      let(:items) { subject.items(collection: 'My Collection', organization: 'Test University', division: 'Test Academic Division') }
       
       it 'creates Item objects' do
         expect(items.length).to eq(2)
         expect(items.first).to be_a(DSpace::Item)
+        expect(items.first.organization).to eq('Test University')
+        expect(items.last.organization).to eq('Test University')
+        expect(items.first.division).to eq('Test Academic Division')
+        expect(items.last.division).to eq('Test Academic Division')
       end
     end
 
-    context 'when retrieving items within a collection' do
-      let(:items) { subject.items(community: 'My Communities') }
+    context 'when retrieving items within a community' do
+      let(:items) { subject.items(community: 'My Community', organization: 'Test University', division: 'Test Academic Division') }
       
       it 'creates Item objects' do
         expect(items.length).to eq(2)
         expect(items.first).to be_a(DSpace::Item)
+        expect(items.first.organization).to eq('Test University')
+        expect(items.last.organization).to eq('Test University')
+        expect(items.first.division).to eq('Test Academic Division')
+        expect(items.last.division).to eq('Test Academic Division')
       end
     end
   end
